@@ -1,0 +1,775 @@
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 13px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #14161c;
+}
+
+body.overlay {
+  cursor: crosshair;
+  user-select: none;
+}
+
+/* ---------- 录制中区域边框 ---------- */
+
+/* 透明穿透窗口：整页不能有任何底色，否则会糊住被录区域 */
+body.frame,
+html.frame,
+body.frame #root {
+  background: transparent !important;
+}
+
+/* ---------- 结果提示（截图/录屏收尾） ---------- */
+
+body.toast,
+html.toast,
+body.toast #root {
+  background: transparent !important;
+}
+
+/* 控制条与长截图预览窗都走透明窗口，圆角和阴影才不会被方形窗口底吃掉 */
+body.control,
+html.control,
+body.control #root,
+body.scrollprev,
+html.scrollprev,
+body.scrollprev #root {
+  background: transparent !important;
+}
+
+/* ---------- 长截图预览窗 ---------- */
+
+.scroll-panel {
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(22, 24, 31, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #d8dbe4;
+  font: 12px/1.35 "Microsoft YaHei", system-ui, sans-serif;
+  user-select: none;
+}
+
+.sp-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  flex: none;
+  cursor: move;
+}
+
+.sp-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2b6cff;
+  flex: none;
+}
+
+.sp-title {
+  font-weight: 600;
+}
+
+.sp-size {
+  margin-left: auto;
+  color: #9aa1b1;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden auto;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+}
+
+.sp-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sp-empty {
+  align-self: center;
+  color: #7b8294;
+  padding: 16px 10px;
+  text-align: center;
+  line-height: 1.7;
+}
+
+.sp-hint {
+  flex: none;
+  color: #8f96a6;
+  font-size: 11px;
+}
+
+.sp-actions {
+  flex: none;
+  display: flex;
+  gap: 6px;
+}
+
+.sp-btn {
+  flex: 1;
+  height: 28px;
+  padding: 0 2px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #d8dbe4;
+  font: 11.5px "Microsoft YaHei", system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sp-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.sp-btn.primary {
+  background: #2b6cff;
+  color: #fff;
+}
+
+.sp-btn.primary:hover {
+  background: #3b78ff;
+}
+
+.sp-btn.ghost {
+  background: transparent;
+  color: #9aa1b1;
+}
+
+.sp-btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.toast {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 15px;
+  background: rgba(24, 26, 32, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+  color: #e9ebf2;
+  font: 13px/1.4 "Microsoft YaHei", system-ui, sans-serif;
+}
+
+.toast-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34c759;
+}
+
+.toast-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rec-frame {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 用四条 repeating-linear-gradient 拼虚线，比 border-style:dashed 更密更醒目 */
+.rec-frame-edge {
+  position: absolute;
+  inset: 0;
+  /* 四条边各自重复，保证上下左右都是等距虚线（border-image 会把左右边拉伸成实线） */
+  background:
+    repeating-linear-gradient(90deg, #ff3b30 0 9px, transparent 9px 18px) left top / 100% 3px no-repeat,
+    repeating-linear-gradient(90deg, #ff3b30 0 9px, transparent 9px 18px) left bottom / 100% 3px no-repeat,
+    repeating-linear-gradient(180deg, #ff3b30 0 9px, transparent 9px 18px) left top / 3px 100% no-repeat,
+    repeating-linear-gradient(180deg, #ff3b30 0 9px, transparent 9px 18px) right top / 3px 100% no-repeat;
+}
+
+/* 四角实心小块：都在选区外侧的 4px 环内，不会录进画面 */
+.rec-frame-corner {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: #ff3b30;
+}
+
+.rec-frame-corner.tl {
+  left: 0;
+  top: 0;
+}
+
+.rec-frame-corner.tr {
+  right: 0;
+  top: 0;
+}
+
+.rec-frame-corner.bl {
+  left: 0;
+  bottom: 0;
+}
+
+.rec-frame-corner.br {
+  right: 0;
+  bottom: 0;
+}
+
+/* 长截图态：同一圈虚线换成蓝色，用来标出正在滚动的抓取区域 */
+.rec-frame.sc .rec-frame-edge {
+  background:
+    repeating-linear-gradient(90deg, #2b6cff 0 9px, transparent 9px 18px) left top / 100% 3px no-repeat,
+    repeating-linear-gradient(90deg, #2b6cff 0 9px, transparent 9px 18px) left bottom / 100% 3px no-repeat,
+    repeating-linear-gradient(180deg, #2b6cff 0 9px, transparent 9px 18px) left top / 3px 100% no-repeat,
+    repeating-linear-gradient(180deg, #2b6cff 0 9px, transparent 9px 18px) right top / 3px 100% no-repeat;
+}
+
+.rec-frame.sc .rec-frame-corner {
+  background: #2b6cff;
+}
+
+
+/* ---------- overlay ---------- */
+
+.overlay-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #101216;
+}
+
+.overlay-root canvas {
+  display: block;
+}
+
+.ov-err {
+  position: fixed;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 6px 12px;
+  background: rgba(180, 30, 30, 0.92);
+  color: #fff;
+  font: 13px/1.5 "Microsoft YaHei", system-ui, sans-serif;
+  border-radius: 6px;
+  pointer-events: none;
+  max-width: 80vw;
+}
+
+/* 没有选区时的操作引导：不给提示，用户会以为「只有十字光标、什么都点不动」 */
+.ov-hint {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9998;
+  padding: 14px 22px;
+  background: rgba(20, 22, 29, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: #e7eaf2;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ov-hint-main {
+  font: 15px/1.6 "Microsoft YaHei", system-ui, sans-serif;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.ov-hint-sub {
+  font: 12px/1.6 "Microsoft YaHei", system-ui, sans-serif;
+  color: #9aa3b4;
+}
+
+.ov-hint-sub b {
+  color: #d8dbe4;
+  font-weight: 600;
+}
+
+.overlay-toolbar {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  row-gap: 4px;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 9px;
+  background: rgba(22, 24, 31, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+}
+
+/* 强制换行：让「工具 + 颜色」在第一行，「撤销/复制/保存/取消」在第二行 */
+/* 图标式工具按钮：8 个中文标签要 450px，图标只要 240px */
+.tb-icon {
+  width: 27px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #cdd2dd;
+  border-radius: 6px;
+  cursor: pointer;
+  flex: none;
+}
+
+.tb-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tb-icon.active {
+  background: #2b6cff;
+  color: #fff;
+}
+
+.tb-ic {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+/* 自绘下拉：原生 select 弹的是系统白底列表，跟深色工具条不搭 */
+.tb-select {
+  position: relative;
+  flex: none;
+}
+
+.tb-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 88px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(22, 24, 31, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  z-index: 20;
+}
+
+.tb-menu.up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.tb-menu-item {
+  border: none;
+  background: transparent;
+  color: #d8dbe4;
+  font-size: 12px;
+  text-align: left;
+  padding: 5px 9px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tb-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tb-menu-item.on {
+  background: #2b6cff;
+  color: #fff;
+}
+
+.tb-break {
+  flex-basis: 100%;
+  height: 0;
+  margin: 0;
+}
+
+.tb-btn {
+  border: none;
+  background: transparent;
+  color: #d8dbe4;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tb-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tb-btn.active {
+  background: #2b6cff;
+  color: #fff;
+}
+
+.tb-sep {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.14);
+  margin: 0 2px;
+}
+
+/* 录屏态的紧凑控件：图标 + 数值，比三个裸下拉框好看也好点 */
+.tb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #d8dbe4;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tb-chip:hover,
+.tb-chip.open {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.tb-chip svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  color: #9aa3b4;
+}
+
+.tb-chip select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  color: #d8dbe4;
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
+  outline: none;
+  cursor: pointer;
+}
+
+.tb-chip select option {
+  background: #1a1d24;
+  color: #d8dbe4;
+}
+
+.tb-chev {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  color: #8b93a5;
+}
+
+.tb-unit {
+  font-size: 11px;
+  color: #8b93a5;
+  margin-left: -1px;
+}
+
+.tb-rec {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 6px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tb-rec:hover {
+  background: #f2555a;
+}
+
+.tb-rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+
+.tb-color {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 0;
+}
+
+.text-input-wrap {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.text-ok {
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  background: #2b6cff;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.text-ok:hover {
+  background: #3d7bff;
+}
+
+.text-input-wrap input {
+  background: rgba(18, 20, 26, 0.92);
+  border: 1px solid #2b6cff;
+  color: #fff;
+  padding: 4px 6px;
+  border-radius: 4px;
+  outline: none;
+  min-width: 160px;
+}
+
+/* ---------- control bar ---------- */
+
+.control-bar {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  white-space: nowrap;
+  background: rgba(22, 24, 31, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  color: #e6e8ef;
+  font-size: 12.5px;
+}
+
+.cb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  box-shadow: 0 0 7px rgba(255, 77, 79, 0.8);
+  flex: none;
+}
+
+.cb-dot.paused {
+  background: #f7b731;
+  box-shadow: none;
+}
+
+.cb-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 42px;
+  flex: none;
+}
+
+.cb-meta {
+  color: #8a90a0;
+  font-size: 11px;
+  flex: none;
+}
+
+.cb-sep {
+  width: 1px;
+  height: 15px;
+  background: rgba(255, 255, 255, 0.14);
+  flex: none;
+  margin: 0 1px;
+}
+
+.cb-ico {
+  flex: none;
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #d8dbe4;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cb-ico:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.cb-ico.danger {
+  color: #ff7875;
+}
+
+.cb-ico.danger:hover {
+  background: rgba(255, 77, 79, 0.16);
+}
+
+/* ---------- pin ---------- */
+
+.pin-root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0e1014;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: block;
+}
+
+/* 选中的贴图亮蓝描边，提示「现在按 Esc 会关掉这一张」 */
+.pin-root.sel {
+  border-color: #2b6cff;
+  box-shadow: inset 0 0 0 1px rgba(43, 108, 255, 0.65);
+}
+
+.pin-root img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* ---------- settings ---------- */
+
+.settings {
+  padding: 22px 26px;
+  height: 100%;
+  overflow: auto;
+  color: #e6e8ef;
+}
+
+.settings h1 {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.settings .sub {
+  color: #8a90a0;
+  font-size: 12px;
+  margin-bottom: 18px;
+}
+
+.card {
+  background: #1b1e26;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.card h2 {
+  font-size: 13px;
+  margin: 0 0 12px;
+  color: #aeb4c2;
+  font-weight: 600;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.row label {
+  width: 120px;
+  color: #c9cedb;
+}
+
+.row input[type="text"],
+.row input[type="number"],
+.row select {
+  background: #12141a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e6e8ef;
+  border-radius: 6px;
+  padding: 5px 8px;
+  min-width: 180px;
+  outline: none;
+}
+
+.row input[type="checkbox"] {
+  accent-color: #2b6cff;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.primary {
+  background: #2b6cff;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.ghost {
+  background: transparent;
+  color: #c9cedb;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 7px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.hint {
+  color: #8a90a0;
+  font-size: 12px;
+  margin-top: 10px;
+  line-height: 1.7;
+}
